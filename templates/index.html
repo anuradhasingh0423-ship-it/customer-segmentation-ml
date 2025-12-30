@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Customer Segmentation</title>
+
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(135deg, #0b0b0b, #1c1c1c);
+            color: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #e50914;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #bbbbbb;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: #111;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 0 20px rgba(229, 9, 20, 0.15);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        label {
+            font-size: 14px;
+            color: #cccccc;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: none;
+            background: #1c1c1c;
+            color: white;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #e50914;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #ff1e1e;
+        }
+
+        .secondary-btn {
+            background: #6a00ff;
+        }
+
+        .secondary-btn:hover {
+            background: #7d1cff;
+        }
+
+        .error {
+            background: #3b0f0f;
+            border-left: 4px solid #ff4d4d;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+
+        .result {
+            background: #0f172a;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e50914;
+            animation: fadeSlide 0.6s ease-in-out;
+        }
+
+        .cluster-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            background: #e50914;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .persona-name {
+            color: #e50914;
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        ul {
+            padding-left: 18px;
+        }
+
+        .persona-img {
+            width: 80px;
+            margin-bottom: 10px;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #777;
+            font-size: 13px;
+        }
+
+        @media (max-width: 800px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @keyframes fadeSlide {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+    <h1>Customer Segmentation</h1>
+    <p class="subtitle">
+        AI-powered customer profiling for smarter business decisions
+    </p>
+
+    <div class="grid">
+
+        <!-- INPUT CARD -->
+        <div class="card">
+            <h3>Enter Customer Details</h3>
+
+            <div id="errorBox"></div>
+
+            <form id="predictForm">
+                <label>Annual Income</label>
+                <input type="number" name="income" min="1" required>
+
+                <label>Age</label>
+                <input type="number" name="age" min="18" max="100" required>
+
+                <label>Total Spending</label>
+                <input type="number" name="spending" min="0" required>
+
+                <label>Recency (days)</label>
+                <input type="number" name="recency" min="0" max="365" required>
+
+                <button type="submit">Predict Segment</button>
+            </form>
+        </div>
+
+        <!-- RESULT CARD -->
+        <div class="card">
+            <h3>Prediction Result</h3>
+
+            <div id="resultBox">
+                <p style="color:#888;">
+                    Submit details to view customer segment insights.
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        ⚡ Built with Machine Learning | Customer Segmentation System
+    </div>
+</div>
+
+<!-- ===========================
+     JAVASCRIPT (NO PAGE RELOAD)
+     =========================== -->
+<script>
+document.getElementById("predictForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const errorBox = document.getElementById("errorBox");
+    const resultBox = document.getElementById("resultBox");
+
+    errorBox.innerHTML = "";
+    resultBox.innerHTML = "⏳ Predicting...";
+
+    const data = {
+        Income: Number(this.income.value),
+        Age: Number(this.age.value),
+        Total_Spending: Number(this.spending.value),
+        Recency: Number(this.recency.value)
+    };
+
+    try {
+        const response = await fetch("/api/predict", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) throw new Error(await response.text());
+
+        const result = await response.json();
+
+        const personaKey = result.persona
+            .toLowerCase()
+            .replaceAll(" ", "")
+            .replaceAll("-", "");
+
+        resultBox.innerHTML = `
+            <div class="result">
+                <div class="cluster-badge">Cluster ${result.cluster}</div>
+
+                <img class="persona-img"
+                     src="/static/personas/${personaKey}.png"
+                     onerror="this.style.display='none'">
+
+                <div class="persona-name">${result.persona}</div>
+                <p>${result.description}</p>
+
+                <strong>Business Strategy</strong>
+                <ul>
+                    ${result.strategy.map(s => `<li>${s}</li>`).join("")}
+                </ul>
+
+                <a href="/download_report/${result.persona}">
+                    <button>Download Report (PDF)</button>
+                </a>
+
+                <a href="http://localhost:8501" target="_blank">
+                    <button class="secondary-btn">View Dashboard</button>
+                </a>
+            </div>
+        `;
+
+    } catch (err) {
+        errorBox.innerHTML = `<div class="error">⚠️ ${err.message}</div>`;
+        resultBox.innerHTML = "";
+    }
+});
+</script>
+
+
+
+</body>
+</html>
+
