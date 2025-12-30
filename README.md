@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Customer Segmentation using K-Means
 
 Dataset: Marketing Campaign Dataset  
@@ -12,3 +13,4 @@ Steps:
 
 Outcome:
 Identified 4 customer segments based on spending behavior and demographics.
+
