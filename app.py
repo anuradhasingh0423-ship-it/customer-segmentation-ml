@@ -8,7 +8,7 @@ from fpdf import FPDF
 import os
 
 # ---------------------------
-#  PATHS
+# PATHS
 # ---------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
@@ -18,7 +18,7 @@ MODEL_DIR = os.path.join(BASE_DIR, "models")
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
 
 # ---------------------------
-#  RATE LIMITING
+# RATE LIMITING
 # ---------------------------
 limiter = Limiter(
     get_remote_address,
@@ -33,15 +33,17 @@ def require_api_key(req):
 
 
 # ---------------------------
-#  LOAD MODEL + SCALER
+# LOAD MODEL + SCALER
 # ---------------------------
 scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
 kmeans = joblib.load(os.path.join(MODEL_DIR, "customer_segmentation.pkl"))
 
+# must match training
 FEATURES = ["Income", "Age", "Total_Spending", "Recency"]
 
+
 # ---------------------------
-#  CREATE DB IF NOT EXISTS
+# DB SETUP
 # ---------------------------
 def init_db():
     conn = sqlite3.connect(DB_PATH)
@@ -63,54 +65,57 @@ def init_db():
 
 init_db()
 
+
 # ---------------------------
-#  PERSONAS
+# PERSONAS
 # ---------------------------
 PERSONAS = {
     0: {
         "name": "Budget Active Shoppers",
         "description": "Low-income customers who make small but frequent purchases.",
-        "key_traits": ["Price sensitive", "Engaged", "Discount driven"],
         "business_strategy": ["Discount offers", "Low-cost bundles"]
     },
     1: {
         "name": "Premium Loyalists",
         "description": "High-income, high-spending customers.",
-        "key_traits": ["High value", "Brand loyal"],
         "business_strategy": ["Loyalty rewards", "Premium offers"]
     },
     2: {
         "name": "At-Risk Customers",
         "description": "Low spending and high inactivity.",
-        "key_traits": ["Churn risk", "Low engagement"],
         "business_strategy": ["Re-engagement campaigns"]
     },
     3: {
         "name": "Loyal Seniors",
         "description": "Older customers with stable behavior.",
-        "key_traits": ["Stable", "Trust-based"],
         "business_strategy": ["Retention rewards"]
     }
 }
 
 
 # ---------------------------
-#  VALIDATION
+# VALIDATION (REALISTIC RANGES)
 # ---------------------------
 def validate_inputs(income, age, spending, recency):
-    if age < 18 or age > 100:
+
+    # match real dataset scale — prevents nonsense values
+    if not 10000 <= income <= 120000:
+        return "Income should be between 10,000 and 120,000."
+
+    if not 18 <= age <= 100:
         return "Age must be between 18 and 100."
-    if income <= 0:
-        return "Income must be greater than 0."
-    if spending < 0:
-        return "Total spending cannot be negative."
-    if recency < 0 or recency > 365:
-        return "Recency must be between 0 and 365 days."
+
+    if not 0 <= spending <= 5000:
+        return "Total spending should be between 0 and 5,000."
+
+    if not 0 <= recency <= 120:
+        return "Recency should be between 0 and 120 days."
+
     return None
 
 
 # ---------------------------
-#  DB HELPERS
+# DB SAVE
 # ---------------------------
 def save_prediction(income, age, spending, recency, cluster, persona):
     conn = sqlite3.connect(DB_PATH)
@@ -124,22 +129,8 @@ def save_prediction(income, age, spending, recency, cluster, persona):
     conn.close()
 
 
-def fetch_history(limit=50):
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT income, age, total_spending, recency, cluster, persona, created_at
-        FROM predictions
-        ORDER BY created_at DESC
-        LIMIT ?
-    """, (limit,))
-    rows = cursor.fetchall()
-    conn.close()
-    return rows
-
-
 # ---------------------------
-#  ROUTES
+# ROUTES
 # ---------------------------
 @app.route("/", methods=["GET"])
 def home():
@@ -151,26 +142,34 @@ def api_predict():
     try:
         data = request.get_json()
 
-        # Ensure all required keys exist
         for key in FEATURES:
             if key not in data:
                 return jsonify({"error": f"Missing {key}"}), 400
 
-        # Convert to numeric safely
+        # numeric conversion
         income = float(data["Income"])
-        
         age = int(float(data["Age"]))
         spending = float(data["Total_Spending"])
         recency = int(float(data["Recency"]))
 
+        # validate user inputs
         error = validate_inputs(income, age, spending, recency)
         if error:
             return jsonify({"error": error}), 400
 
-        df = pd.DataFrame([[income, age, spending, recency]], columns=FEATURES)
+        df = pd.DataFrame(
+            [[income, age, spending, recency]],
+            columns=FEATURES
+        )
+
+        # DEBUG (optional): see what model receives
+        print("\nINPUT TO MODEL:")
+        print(df)
+
         scaled = scaler.transform(df)
         cluster = int(kmeans.predict(scaled)[0])
-        persona = PERSONAS[cluster]
+
+        persona = PERSONAS.get(cluster, {"name": "Unknown", "description": ""})
 
         save_prediction(income, age, spending, recency, cluster, persona["name"])
 
@@ -191,7 +190,17 @@ def api_history():
     if not require_api_key(request):
         return jsonify({"error": "Unauthorized"}), 401
 
-    rows = fetch_history()
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT income, age, total_spending, recency, cluster, persona, created_at
+        FROM predictions
+        ORDER BY created_at DESC
+        LIMIT 50
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+
     return jsonify([
         {
             "income": r[0],
@@ -215,8 +224,10 @@ def download_report(persona):
     pdf.ln(5)
     pdf.cell(0, 10, f"Persona: {persona}", ln=True)
 
-    pdf.output("report.pdf")
-    return send_file("report.pdf", as_attachment=True)
+    filename = "report.pdf"
+    pdf.output(filename)
+
+    return send_file(filename, as_attachment=True)
 
 
 if __name__ == "__main__":
