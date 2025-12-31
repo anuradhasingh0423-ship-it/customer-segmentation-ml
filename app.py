@@ -1,5 +1,3 @@
-import logging
-logging.basicConfig(level=logging.INFO)
 from flask import Flask, request, render_template, jsonify, send_file
 import pandas as pd
 import joblib
@@ -9,28 +7,24 @@ from flask_limiter.util import get_remote_address
 from fpdf import FPDF
 import os
 
+# ---------------------------
+#  PATHS
+# ---------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
 DB_PATH = os.path.join(BASE_DIR, "customer_segments.db")
 MODEL_DIR = os.path.join(BASE_DIR, "models")
-DB_PATH = os.path.join(BASE_DIR, "customer_segments.db")
-
-
-# FLASK APP
 
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
 
-
-# RATE LIMITING
-
+# ---------------------------
+#  RATE LIMITING
+# ---------------------------
 limiter = Limiter(
     get_remote_address,
     app=app,
     default_limits=["100 per hour"]
 )
-
-
-# API KEY SECURITY
 
 API_KEY = os.getenv("API_KEY")
 
@@ -38,16 +32,40 @@ def require_api_key(req):
     return req.headers.get("X-API-KEY") == API_KEY
 
 
-# LOAD MODEL & SCALER
-
+# ---------------------------
+#  LOAD MODEL + SCALER
+# ---------------------------
 scaler = joblib.load(os.path.join(MODEL_DIR, "scaler.pkl"))
 kmeans = joblib.load(os.path.join(MODEL_DIR, "customer_segmentation.pkl"))
 
 FEATURES = ["Income", "Age", "Total_Spending", "Recency"]
 
+# ---------------------------
+#  CREATE DB IF NOT EXISTS
+# ---------------------------
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            income REAL,
+            age INTEGER,
+            total_spending REAL,
+            recency INTEGER,
+            cluster INTEGER,
+            persona TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    conn.close()
 
-# PERSONAS
+init_db()
 
+# ---------------------------
+#  PERSONAS
+# ---------------------------
 PERSONAS = {
     0: {
         "name": "Budget Active Shoppers",
@@ -76,8 +94,9 @@ PERSONAS = {
 }
 
 
-# INPUT VALIDATION
-
+# ---------------------------
+#  VALIDATION
+# ---------------------------
 def validate_inputs(income, age, spending, recency):
     if age < 18 or age > 100:
         return "Age must be between 18 and 100."
@@ -90,8 +109,9 @@ def validate_inputs(income, age, spending, recency):
     return None
 
 
-# DATABASE HELPERS
-
+# ---------------------------
+#  DB HELPERS
+# ---------------------------
 def save_prediction(income, age, spending, recency, cluster, persona):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -102,6 +122,7 @@ def save_prediction(income, age, spending, recency, cluster, persona):
     """, (income, age, spending, recency, cluster, persona))
     conn.commit()
     conn.close()
+
 
 def fetch_history(limit=50):
     conn = sqlite3.connect(DB_PATH)
@@ -117,53 +138,54 @@ def fetch_history(limit=50):
     return rows
 
 
-# FRONTEND ROUTE
-
+# ---------------------------
+#  ROUTES
+# ---------------------------
 @app.route("/", methods=["GET"])
 def home():
     return render_template("index.html")
 
 
-
-# API: PREDICT
-
 @app.route("/api/predict", methods=["POST"])
-#@limiter.limit("10 per minute")
 def api_predict():
-    # if not require_api_key(request):
-    #     return jsonify({"error": "Unauthorized"}), 401
+    try:
+        data = request.get_json()
 
-    data = request.get_json()
-    for key in FEATURES:
-        if key not in data:
-            return jsonify({"error": f"Missing {key}"}), 400
+        # Ensure all required keys exist
+        for key in FEATURES:
+            if key not in data:
+                return jsonify({"error": f"Missing {key}"}), 400
 
-    income = data["Income"]
-    age = data["Age"]
-    spending = data["Total_Spending"]
-    recency = data["Recency"]
+        # Convert to numeric safely
+        income = float(data["Income"])
+        
+        age = int(float(data["Age"]))
+        spending = float(data["Total_Spending"])
+        recency = int(float(data["Recency"]))
 
-    error = validate_inputs(income, age, spending, recency)
-    if error:
-        return jsonify({"error": error}), 400
+        error = validate_inputs(income, age, spending, recency)
+        if error:
+            return jsonify({"error": error}), 400
 
-    df = pd.DataFrame([[income, age, spending, recency]], columns=FEATURES)
-    scaled = scaler.transform(df)
-    cluster = int(kmeans.predict(scaled)[0])
-    persona = PERSONAS[cluster]
+        df = pd.DataFrame([[income, age, spending, recency]], columns=FEATURES)
+        scaled = scaler.transform(df)
+        cluster = int(kmeans.predict(scaled)[0])
+        persona = PERSONAS[cluster]
 
-    save_prediction(income, age, spending, recency, cluster, persona["name"])
+        save_prediction(income, age, spending, recency, cluster, persona["name"])
 
-    return jsonify({
-        "cluster": cluster,
-        "persona": persona["name"],
-        "description": persona["description"],
-        "strategy": persona["business_strategy"]
-    })
+        return jsonify({
+            "cluster": cluster,
+            "persona": persona["name"],
+            "description": persona["description"],
+            "strategy": persona["business_strategy"]
+        })
+
+    except Exception as e:
+        print("ERROR:", e)
+        return jsonify({"error": "Internal Server Error"}), 500
 
 
-
-# API: HISTORY
 @app.route("/api/history", methods=["GET"])
 def api_history():
     if not require_api_key(request):
@@ -183,15 +205,13 @@ def api_history():
     ])
 
 
-# PDF EXPORT
-
 @app.route("/download_report/<persona>")
 def download_report(persona):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
 
-    pdf.cell(0, 10, f"Customer Persona Report", ln=True)
+    pdf.cell(0, 10, "Customer Persona Report", ln=True)
     pdf.ln(5)
     pdf.cell(0, 10, f"Persona: {persona}", ln=True)
 
@@ -201,4 +221,3 @@ def download_report(persona):
 
 if __name__ == "__main__":
     app.run(debug=True)
-
