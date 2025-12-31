@@ -11,10 +11,7 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, "templates")
-<<<<<<< HEAD
-=======
 DB_PATH = os.path.join(BASE_DIR, "customer_segments.db")
->>>>>>> b30db8a (Fix paths + DB init)
 MODEL_DIR = os.path.join(BASE_DIR, "models")
 DB_PATH = os.path.join(BASE_DIR, "customer_segments.db")
 
@@ -204,3 +201,4 @@ def download_report(persona):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
