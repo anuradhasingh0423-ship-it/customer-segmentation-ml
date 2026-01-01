@@ -99,8 +99,8 @@ PERSONAS = {
 def validate_inputs(income, age, spending, recency):
 
     # match real dataset scale — prevents nonsense values
-    if not 10000 <= income <= 120000:
-        return "Income should be between 10,000 and 120,000."
+    if not 10000 <= income <= 700000:
+        return "Income should be between 10,000 and 700,000."
 
     if not 18 <= age <= 100:
         return "Age must be between 18 and 100."
@@ -232,3 +232,4 @@ def download_report(persona):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
