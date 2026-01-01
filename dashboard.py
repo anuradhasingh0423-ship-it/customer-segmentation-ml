@@ -1,129 +1,141 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import plotly.express as px
+import os
 
-# =========================
-# Page config
-# =========================
+# =============== APP CONFIG ===============
 st.set_page_config(
-    page_title="Customer Segmentation",
+    page_title="Customer Segmentation Dashboard",
+    page_icon="📊",
     layout="wide"
 )
 
-# =========================
-# Custom CSS (Neon Effects)
-# =========================
+# =============== THEME / STYLE ===============
 st.markdown("""
 <style>
-h1 {
-    color: #E50914;
-    text-shadow: 0 0 8px #E50914;
+
+.main {background-color:#0b0b0c;}
+
+h1, h2, h3, p {color:white;}
+
+.glow {
+  color: #ff1c1c;
+  text-shadow: 0px 0px 20px #e60000;
 }
-h2, h3 {
-    color: #B5179E;
+
+.circle-card {
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 2px solid #ff1c1c;
+  background: radial-gradient(circle at top, #3b0000, #000);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0px 0px 25px #ff0000;
+  color:white;
 }
-[data-testid="metric-container"] {
-    background-color: #1C1C1C;
-    border: 1px solid #E50914;
-    border-radius: 10px;
-    padding: 15px;
-}
+
 </style>
 """, unsafe_allow_html=True)
 
-st.title(" Customer Segmentation Dashboard")
+# =============== DATABASE ===============
+DB_PATH = "customer_segments.db"
 
-# =========================
-# Load data from DB
-# =========================
-conn = sqlite3.connect("customer_segments.db")
-df = pd.read_sql("SELECT * FROM predictions", conn)
-conn.close()
+if not os.path.exists(DB_PATH):
+    st.error("⚠️ Database not found. Add records using your Flask app first.")
+    st.stop()
 
-# =========================
-# Persona mapping
-# =========================
-PERSONA_MAP = {
-    0: "Budget Active Shoppers",
-    1: "Premium Loyalists",
-    2: "At-Risk Customers",
-    3: "Loyal Seniors"
-}
-df["Persona"] = df["cluster"].map(PERSONA_MAP)
+conn = sqlite3.connect(DB_PATH)
+df = pd.read_sql_query("SELECT * FROM predictions", conn)
 
-# =========================
-# SIDEBAR FILTERS
-# =========================
-st.sidebar.header("🧭 Upside Down Filters")
+# Normalize column names (prevents KeyError)
+df.columns = [c.lower() for c in df.columns]
 
-persona_filter = st.sidebar.multiselect(
-    "Select Personas",
-    df["Persona"].unique(),
-    default=df["Persona"].unique()
-)
+# Rename if needed
+df = df.rename(columns={
+    "total_spending": "spending"
+})
 
-filtered_df = df[df["Persona"].isin(persona_filter)]
-
-# =========================
-# KPI METRICS
-# =========================
-st.subheader("📌 Key Metrics")
-
-c1, c2, c3, c4 = st.columns(4)
-
-c1.metric("👥 Customers", len(filtered_df))
-c2.metric("💰 Avg Income", int(filtered_df["income"].mean()))
-c3.metric("🛒 Avg Spending", int(filtered_df["total_spending"].mean()))
-c4.metric("⚠️ At-Risk %",
-          f"{(filtered_df['Persona']=='At-Risk Customers').mean()*100:.1f}%")
+# =============== HEADER ===============
+st.markdown("<h1 class='glow'>Customer Segmentation Dashboard</h1>", unsafe_allow_html=True)
+st.write("Powered by Machine Learning — Stranger Things Edition 👻")
 
 st.divider()
 
-# =========================
-# PERSONA DISTRIBUTION (BAR)
-# =========================
-st.subheader("👥 Persona Distribution")
+# =============== KPI CIRCLES ===============
+col1, col2, col3, col4 = st.columns(4)
 
-persona_counts = filtered_df["Persona"].value_counts()
+with col1:
+    st.markdown(
+        f"<div class='circle-card'><h4>Total Records</h4><h2>{len(df)}</h2></div>",
+        unsafe_allow_html=True
+    )
 
-st.bar_chart(
-    persona_counts,
-    color="#E50914"
-)
+with col2:
+    st.markdown(
+        f"<div class='circle-card'><h4>Avg Income</h4><h2>${df['income'].mean():,.0f}</h2></div>",
+        unsafe_allow_html=True
+    )
 
-# =========================
-# SPENDING BY PERSONA (BAR)
-# =========================
-st.subheader("💸 Average Spending by Persona")
+with col3:
+    st.markdown(
+        f"<div class='circle-card'><h4>Avg Spending</h4><h2>${df['spending'].mean():,.0f}</h2></div>",
+        unsafe_allow_html=True
+    )
 
-avg_spending = (
-    filtered_df
-    .groupby("Persona")["total_spending"]
-    .mean()
-    .sort_values()
-)
+with col4:
+    st.markdown(
+        f"<div class='circle-card'><h4>Clusters</h4><h2>{df['cluster'].nunique()}</h2></div>",
+        unsafe_allow_html=True
+    )
 
-st.bar_chart(
-    avg_spending,
-    color="#B5079E"
-)
+st.divider()
 
+# =============== CHARTS ===============
+left, right = st.columns(2)
 
-# CHURN ZONE (TABLE)
+with left:
+    st.subheader("Cluster Distribution")
+    fig = px.histogram(df, x="cluster", color="cluster")
+    st.plotly_chart(fig, use_container_width=True)
 
-st.subheader("🧟 Churn Zone (At-Risk Customers)")
+with right:
+    st.subheader("Recency vs Spending")
+    fig2 = px.scatter(
+        df,
+        x="recency",
+        y="spending",
+        color="cluster",
+        hover_data=["age"]
+    )
+    st.plotly_chart(fig2, use_container_width=True)
 
-at_risk = filtered_df[filtered_df["Persona"] == "At-Risk Customers"]
+st.divider()
 
-st.dataframe(
-    at_risk[["income", "age", "total_spending", "recency"]],
-    use_container_width=True
-)
+# =============== PERSONA IMAGES ===============
+st.subheader("Customer Personas")
 
+image_map = {
+    0: "static/personas/budgetactiveshoppers.png",
+    1: "static/personas/premiumloyalists.png",
+    2: "static/personas/atriskcustomers.png",
+    3: "static/personas/loyalseniors.png"
+}
 
-# FOOTER
+cols = st.columns(4)
 
-st.markdown(
-    "<center><small>⚡ Built with ML in the Upside Down</small></center>",
-    unsafe_allow_html=True
-)
+for i, col in enumerate(cols):
+    if os.path.exists(image_map[i]):
+        col.image(image_map[i])
+        col.caption(f"Cluster {i}")
+    else:
+        col.info(f"Image missing for cluster {i}")
+
+st.divider()
+
+# =============== RECENT DATA ===============
+st.subheader("Recent Predictions")
+st.dataframe(df.tail(25), use_container_width=True)
