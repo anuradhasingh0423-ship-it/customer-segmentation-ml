@@ -160,7 +160,6 @@
 
     <div class="grid">
 
-        <!-- INPUT CARD -->
         <div class="card">
             <h3>Enter Customer Details</h3>
 
@@ -183,7 +182,6 @@
             </form>
         </div>
 
-        <!-- RESULT CARD -->
         <div class="card">
             <h3>Prediction Result</h3>
 
@@ -201,9 +199,6 @@
     </div>
 </div>
 
-<!-- ===========================
-     JAVASCRIPT (NO PAGE RELOAD)
-     =========================== -->
 <script>
 document.getElementById("predictForm").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -250,14 +245,14 @@ document.getElementById("predictForm").addEventListener("submit", async function
 
                 <strong>Business Strategy</strong>
                 <ul>
-                    ${result.strategy.map(s => `<li>${s}</li>`).join("")}
+                    ${(result.strategy || []).map(s => `<li>${s}</li>`).join("")}
                 </ul>
 
                 <a href="/download_report/${result.persona}">
                     <button>Download Report (PDF)</button>
                 </a>
 
-                <a href="https://customer-segmentation-ml.onrender.com/" target="_blank">
+                <a href="https://customer-segmentation-ml-ikboqdkkymzzw4xk3wzmsf.streamlit.app/" target="_blank">
                     <button class="secondary-btn">View Dashboard</button>
                 </a>
             </div>
@@ -269,8 +264,6 @@ document.getElementById("predictForm").addEventListener("submit", async function
     }
 });
 </script>
-
-
 
 </body>
 </html>
