@@ -1,9 +1,8 @@
 streamlit
 pandas
-sqlite3-binary
 plotly
 numpy
 joblib
 scikit-learn
 fpdf
-flask
+
