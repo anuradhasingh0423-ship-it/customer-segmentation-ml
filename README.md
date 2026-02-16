@@ -1,33 +1,26 @@
-Customer Segmentation & Insights Platform
+🚀 Customer Segmentation Web App — Now Live
+I recently built and deployed an end-to-end Customer Segmentation System using machine learning.
+The app predicts customer groups such as:
+• Budget Active Shoppers
+• Premium Loyalists
+• At-Risk Customers
+• Loyal Seniors
+🧠 Tech Stack
+• Python + Flask (Backend API)
+• Scikit-learn (K-Means Clustering)
+• SQLite (Database)
+• Streamlit (Analytics Dashboard)
+• Render (Deployment)
+📊 Features
+• Input validation
+• Stores predictions in a database
+• Generates downloadable PDF reports
+• Interactive dashboard for insights
+dashboard link
+https://lnkd.in/dBGKH76G
+🔗 Live App
+https://lnkd.in/dyqdm-Aa
+💻 Source Code
+https://lnkd.in/dNwiTY6M
 
-This project is a full-stack Machine Learning application that helps businesses understand customer behavior and target the right audience.
 
-✨ Key Features
-
-🧠 ML-powered segmentation using K-Means
-
-🔌 REST API for real-time predictions
-
-📄 PDF persona report generation
-
-📊 Dashboard for analytics and trends
-
-🗄️ SQLite database storage with history tracking
-
-🌍 Fully deployed on Render (public URL)
-
-👥 Personas Identified
-
-Budget Active Shoppers
-
-Premium Loyalists
-
-At-Risk Customers
-
-Loyal Seniors
-
-🛠️ Tech Stack
-
-Python, Flask, Streamlit, Scikit-Learn, Pandas, SQLite, HTML/CSS/JS, Render.
-
-This system can be extended for CRM tools, marketing automation, and e-commerce insights.
