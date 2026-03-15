@@ -1,17 +1,17 @@
-# Customer Segmentation 
+## Customer Segmentation 
 live now: [https://customer-segmentation-ml-6.onrender.com/]
 
 
 
 
-🧠 Customer Segmentation using Machine Learning
+### 🧠 Customer Segmentation using Machine Learning
 
 AI-powered customer profiling for smarter business decisions
 
 
 
 
-📌 Project Overview
+### 📌 Project Overview
 
 This project is an end-to-end Machine Learning web application that segments customers into meaningful groups based on their demographic and behavioral data.
 
@@ -29,7 +29,9 @@ The application uses unsupervised learning (KMeans clustering) and is deployed a
 
 
 
-🚀 Live Features
+
+
+### 🚀 Live Features
 
 🔍 Predict customer segment using ML
 
@@ -56,7 +58,8 @@ Efficient for numerical customer features
 
 Widely used in real-world customer segmentation problems
 
-📥 Input Features
+
+### 📥 Input Features
 Feature	Description
 Income	Annual income of the customer
 Age	Age of the customer
@@ -64,7 +67,7 @@ Total_Spending	Total money spent
 Recency	Days since last purchase
 
 
-🎯 Output
+### 🎯 Output
 
 The model predicts:
 
@@ -81,3 +84,5 @@ Budget Active Shoppers
 At-Risk Customers
 
 Loyal Seniors
+
+
