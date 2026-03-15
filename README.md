@@ -10,6 +10,7 @@ AI-powered customer profiling for smarter business decisions
 
 
 
+
 📌 Project Overview
 
 This project is an end-to-end Machine Learning web application that segments customers into meaningful groups based on their demographic and behavioral data.
