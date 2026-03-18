@@ -6,4 +6,4 @@ joblib
 scikit-learn
 fpdf
 flask
-
+gunicorn
